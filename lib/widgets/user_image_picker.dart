@@ -4,20 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class UserImagePicker extends StatefulWidget {
-  const UserImagePicker({super.key, required this.onPickImage});
+  const UserImagePicker({
+    super.key,
+    required this.onPickImage,
+  });
 
   final void Function(File pickedImage) onPickImage;
 
   @override
   State<UserImagePicker> createState() {
-    return _UserImagePicker();
+    return _UserImagePickerState();
   }
 }
 
-class _UserImagePicker extends State<UserImagePicker> {
+class _UserImagePickerState extends State<UserImagePicker> {
   File? _pickedImageFile;
 
-  void _pickedImage() async {
+  void _pickImage() async {
     final pickedImage = await ImagePicker().pickImage(
       source: ImageSource.camera,
       imageQuality: 50,
@@ -46,7 +49,7 @@ class _UserImagePicker extends State<UserImagePicker> {
               _pickedImageFile != null ? FileImage(_pickedImageFile!) : null,
         ),
         TextButton.icon(
-          onPressed: _pickedImage,
+          onPressed: _pickImage,
           icon: const Icon(Icons.image),
           label: Text(
             'Add Image',
@@ -54,7 +57,7 @@ class _UserImagePicker extends State<UserImagePicker> {
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
-        ),
+        )
       ],
     );
   }

@@ -19,68 +19,66 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  final _formKey = GlobalKey<FormState>();
+  final _form = GlobalKey<FormState>();
 
   var _isLogin = true;
   var _enteredEmail = '';
   var _enteredPassword = '';
   var _enteredUsername = '';
   File? _selectedImage;
-
   var _isAuthenticating = false;
 
   void _submit() async {
-    final isValid = _formKey.currentState!.validate();
+    final isValid = _form.currentState!.validate();
+
     if (!isValid || !_isLogin && _selectedImage == null) {
+      // show error message ...
       return;
     }
 
-    _formKey.currentState!.save();
+    _form.currentState!.save();
 
-    if (isValid) {
-      try {
-        setState(() {
-          _isAuthenticating = true;
-        });
-        if (_isLogin) {
-          final userCredentials = await _firebase.signInWithEmailAndPassword(
-              email: _enteredEmail, password: _enteredPassword);
-        } else {
-          final userCredentials =
-              await _firebase.createUserWithEmailAndPassword(
-            email: _enteredEmail,
-            password: _enteredPassword,
-          );
+    try {
+      setState(() {
+        _isAuthenticating = true;
+      });
+      if (_isLogin) {
+        final userCredentials = await _firebase.signInWithEmailAndPassword(
+            email: _enteredEmail, password: _enteredPassword);
+      } else {
+        final userCredentials = await _firebase.createUserWithEmailAndPassword(
+            email: _enteredEmail, password: _enteredPassword);
 
-          final storageRef = FirebaseStorage.instance
-              .ref()
-              .child('user_images')
-              .child('${userCredentials.user!.uid}.jpg');
+        final storageRef = FirebaseStorage.instance
+            .ref()
+            .child('user_images')
+            .child('${userCredentials.user!.uid}.jpg');
 
-          await storageRef.putFile(_selectedImage!);
-          final imageUrl = await storageRef.getDownloadURL();
+        await storageRef.putFile(_selectedImage!);
+        final imageUrl = await storageRef.getDownloadURL();
 
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(userCredentials.user!.uid)
-              .set({
-            'username': _enteredUsername,
-            'email': _enteredEmail,
-            'imageUrl': imageUrl,
-          });
-        }
-      } on FirebaseAuthException catch (error) {
-        if (error.code == 'email-already-in-use') {}
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error.message ?? 'Authentication failed'),
-          ),
-        );
-        setState(() {
-          _isAuthenticating = false;
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userCredentials.user!.uid)
+            .set({
+          'username': _enteredUsername,
+          'email': _enteredEmail,
+          'image_url': imageUrl,
         });
       }
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'email-already-in-use') {
+        // ...
+      }
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message ?? 'Authentication failed.'),
+        ),
+      );
+      setState(() {
+        _isAuthenticating = false;
+      });
     }
   }
 
@@ -109,65 +107,77 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Form(
-                      key: _formKey,
+                      key: _form,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (!_isLogin)
                             UserImagePicker(
-                              onPickImage: (pickedImage) =>
-                                  _selectedImage = pickedImage,
+                              onPickImage: (pickedImage) {
+                                _selectedImage = pickedImage;
+                              },
                             ),
                           TextFormField(
                             decoration: const InputDecoration(
-                              labelText: 'Email Address',
-                            ),
+                                labelText: 'Email Address'),
                             keyboardType: TextInputType.emailAddress,
                             autocorrect: false,
                             textCapitalization: TextCapitalization.none,
-                            validator: (value) => value == null ||
-                                    value.trim().isEmpty ||
-                                    !value.contains('@')
-                                ? 'Please enter a valid email address.'
-                                : null,
-                            onSaved: (newValue) => _enteredEmail = newValue!,
+                            validator: (value) {
+                              if (value == null ||
+                                  value.trim().isEmpty ||
+                                  !value.contains('@')) {
+                                return 'Please enter a valid email address.';
+                              }
+
+                              return null;
+                            },
+                            onSaved: (value) {
+                              _enteredEmail = value!;
+                            },
                           ),
                           if (!_isLogin)
                             TextFormField(
-                              validator: (value) => value == null ||
-                                      value.isEmpty ||
-                                      value.trim().length < 4
-                                  ? 'Please enter at least 4 characters)'
-                                  : null,
                               decoration:
                                   const InputDecoration(labelText: 'Username'),
                               enableSuggestions: false,
-                              onSaved: (newValue) =>
-                                  newValue = _enteredUsername,
+                              validator: (value) {
+                                if (value == null ||
+                                    value.isEmpty ||
+                                    value.trim().length < 4) {
+                                  return 'Please enter at least 4 characters.';
+                                }
+                                return null;
+                              },
+                              onSaved: (value) {
+                                _enteredUsername = value!;
+                              },
                             ),
                           TextFormField(
-                            decoration: const InputDecoration(
-                              labelText: 'Password',
-                            ),
+                            decoration:
+                                const InputDecoration(labelText: 'Password'),
                             obscureText: true,
-                            validator: (value) => value == null ||
-                                    value.trim().length < 6
-                                ? 'Password must be atleast 6 characters long.'
-                                : null,
-                            onSaved: (newValue) => _enteredPassword = newValue!,
+                            validator: (value) {
+                              if (value == null || value.trim().length < 6) {
+                                return 'Password must be at least 6 characters long.';
+                              }
+                              return null;
+                            },
+                            onSaved: (value) {
+                              _enteredPassword = value!;
+                            },
                           ),
-                          const SizedBox(
-                            height: 12,
-                          ),
+                          const SizedBox(height: 12),
                           if (_isAuthenticating)
                             const CircularProgressIndicator(),
                           if (!_isAuthenticating)
                             ElevatedButton(
                               onPressed: _submit,
                               style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer),
+                                backgroundColor: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer,
+                              ),
                               child: Text(_isLogin ? 'Login' : 'Signup'),
                             ),
                           if (!_isAuthenticating)
@@ -179,7 +189,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               },
                               child: Text(_isLogin
                                   ? 'Create an account'
-                                  : 'I already have an account.'),
+                                  : 'I already have an account'),
                             ),
                         ],
                       ),

@@ -18,13 +18,12 @@ class _NewMessageState extends State<NewMessage> {
   void dispose() {
     _messageController.dispose();
     super.dispose();
-    
   }
 
-  void _submitMessage() async{
+  void _submitMessage() async {
     final enteredMessage = _messageController.text;
 
-    if(enteredMessage.trim().isEmpty){
+    if (enteredMessage.trim().isEmpty) {
       return;
     }
 
@@ -32,19 +31,18 @@ class _NewMessageState extends State<NewMessage> {
     _messageController.clear();
 
     final user = FirebaseAuth.instance.currentUser!;
+    final userData = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
 
-    final userData = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-
-    FirebaseFirestore.instance
-              .collection('chat')
-              .add({
-                'text': enteredMessage,
-                'createdAt': Timestamp.now(),
-                'userdId':user.uid,
-                'username': userData.data()!['username'],
-                'userImage':userData.data()!['imageUrl'],
-              });
-    
+    FirebaseFirestore.instance.collection('chat').add({
+      'text': enteredMessage,
+      'createdAt': Timestamp.now(),
+      'userId': user.uid,
+      'username': userData.data()!['username'],
+      'userImage': userData.data()!['image_url'],
+    });
   }
 
   @override
@@ -59,13 +57,15 @@ class _NewMessageState extends State<NewMessage> {
               textCapitalization: TextCapitalization.sentences,
               autocorrect: true,
               enableSuggestions: true,
-              decoration: const InputDecoration(labelText: 'Send a message'),
+              decoration: const InputDecoration(labelText: 'Send a message...'),
             ),
           ),
           IconButton(
             color: Theme.of(context).colorScheme.primary,
+            icon: const Icon(
+              Icons.send,
+            ),
             onPressed: _submitMessage,
-            icon: const Icon(Icons.send),
           ),
         ],
       ),

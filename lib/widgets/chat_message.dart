@@ -13,55 +13,67 @@ class ChatMessages extends StatelessWidget {
     return StreamBuilder(
       stream: FirebaseFirestore.instance
           .collection('chat')
-          .orderBy('createdAt', descending: true)
+          .orderBy(
+            'createdAt',
+            descending: true,
+          )
           .snapshots(),
-      builder: (context, snapshot) => snapshot.connectionState ==
-              ConnectionState.waiting
-          ? const Center(child: CircularProgressIndicator())
-          : !snapshot.hasData || snapshot.data!.docs.isEmpty
-              ? const Center(
-                  child: Text('No messages found'),
-                )
-              : snapshot.hasError
-                  ? const Center(
-                      child: Text('Something went wrong'),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(
-                        bottom: 40,
-                        left: 13,
-                        right: 13,
-                      ),
-                      reverse: true,
-                      itemCount: snapshot.data!.docs.length,
-                      itemBuilder: (context, index) {
-                        final loadedMessage = snapshot.data!.docs;
-                        final chatMessage = snapshot.data!.docs[index].data();
-                        final nextChatMessage = index + 1 < loadedMessage.length
-                            ? loadedMessage[index + 1].data()
-                            : null;
+      builder: (ctx, chatSnapshots) {
+        if (chatSnapshots.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
 
-                        final currentMessageUserName = chatMessage['userId'];
-                        final nextMessageUsername = nextChatMessage != null
-                            ? nextChatMessage['userId']
-                            : null;
-                        final nextUserIsSame =
-                            nextMessageUsername == currentMessageUserName;
+        if (!chatSnapshots.hasData || chatSnapshots.data!.docs.isEmpty) {
+          return const Center(
+            child: Text('No messages found.'),
+          );
+        }
 
-                        if (nextUserIsSame) {
-                          return MessageBubble.next(
-                              message: chatMessage['text'],
-                              isMe: authenticatedUser.uid ==
-                                  currentMessageUserName);
-                        } else {
-                          MessageBubble.first(
-                              userImage: chatMessage['userIamge'],
-                              username: chatMessage['username'],
-                              message: chatMessage['text'],
-                              isMe: authenticatedUser.uid ==
-                                  currentMessageUserName);
-                        }
-                      }),
+        if (chatSnapshots.hasError) {
+          return const Center(
+            child: Text('Something went wrong...'),
+          );
+        }
+
+        final loadedMessages = chatSnapshots.data!.docs;
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(
+            bottom: 40,
+            left: 13,
+            right: 13,
+          ),
+          reverse: true,
+          itemCount: loadedMessages.length,
+          itemBuilder: (ctx, index) {
+            final chatMessage = loadedMessages[index].data();
+            final nextChatMessage = index + 1 < loadedMessages.length
+                ? loadedMessages[index + 1].data()
+                : null;
+
+            final currentMessageUserId = chatMessage['userId'];
+            final nextMessageUserId =
+                nextChatMessage != null ? nextChatMessage['userId'] : null;
+            final nextUserIsSame = nextMessageUserId == currentMessageUserId;
+
+            if (nextUserIsSame) {
+              return MessageBubble.next(
+                message: chatMessage['text'],
+                isMe: authenticatedUser.uid == currentMessageUserId,
+              );
+            } else {
+              return MessageBubble.first(
+                userImage: chatMessage['userImage'],
+                username: chatMessage['username'],
+                message: chatMessage['text'],
+                isMe: authenticatedUser.uid == currentMessageUserId,
+              );
+            }
+          },
+        );
+      },
     );
   }
 }
